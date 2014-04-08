@@ -34,6 +34,7 @@
 #import "RulersLayer.h"
 #import "GuidesLayer.h"
 #import "NotesLayer.h"
+#import "SnapLayer.h"
 #import "CCBTransparentWindow.h"
 #import "CCBTransparentView.h"
 #import "PositionPropertySetter.h"
@@ -67,6 +68,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
 @synthesize guideLayer;
 @synthesize rulerLayer;
 @synthesize notesLayer;
+@synthesize snapLayer;
 @synthesize physicsLayer;
 
 +(id) sceneWithAppDelegate:(AppDelegate*)app
@@ -105,6 +107,9 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
     notesLayer = [NotesLayer node];
     [self addChild:notesLayer z:6];
     
+    // Snapping
+    snapLayer = [SnapLayer node];
+    [self addChild:snapLayer z:3];
     
     // Selection layer
     selectionLayer = [CCNode node];
@@ -1130,6 +1135,8 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
         }
     }
     
+    [snapLayer mouseDown:pos event:event];
+    
     return;
 }
 
@@ -1584,6 +1591,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
         CGPoint delta = ccpSub(pos, mouseDownPos);
         scrollOffset = ccpAdd(panningStartScrollOffset, delta);
     }
+    [snapLayer mouseDragged:pos event:event];
     
     return;
 }
@@ -1725,6 +1733,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
     
     if ([notesLayer mouseUp:pos event:event]) return;
     if ([guideLayer mouseUp:pos event:event]) return;
+    [snapLayer mouseUp:pos event:event];
     
     isMouseTransforming = NO;
     
