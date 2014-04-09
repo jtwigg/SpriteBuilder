@@ -110,6 +110,7 @@ enum {
     CCBTransformHandle currentMouseTransform;
     BOOL isMouseTransforming;
     BOOL isPanning;
+    BOOL snapLinesNeedUpdate;
     CGPoint scrollOffset;
     CGPoint panningStartScrollOffset;
     

@@ -10,9 +10,9 @@
 
 @interface CCNode (PositionExtentions)
 
-@property (nonatomic) float top;
-@property (nonatomic) float right;
-@property (nonatomic) float left;
-@property (nonatomic) float bottom;
+@property (nonatomic) CGFloat topInPoints;
+@property (nonatomic) CGFloat rightInPoints;
+@property (nonatomic) CGFloat leftInPoints;
+@property (nonatomic) CGFloat bottomInPoints;
 
 @end

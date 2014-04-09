@@ -1260,6 +1260,8 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
     if (!appDelegate.hasOpenedDocument) return;
     [self mouseMoved:event];
     
+    BOOL updatedSnapLines = NO;
+    
     CGPoint pos = [[CCDirectorMac sharedDirector] convertEventToGL:event];
     
     if ([notesLayer mouseDragged:pos event:event]) return;
@@ -1370,6 +1372,8 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
             selectedNode.position = [selectedNode convertPositionFromPoints:newLocalPos type:selectedNode.positionType];
         }
         [appDelegate refreshProperty:@"position"];
+        [snapLayer mouseDragged:pos event:event]; // Updates the snap lines
+        updatedSnapLines = YES;
     }
     else if (currentMouseTransform == kCCBTransformHandleScale)
     {
@@ -1591,7 +1595,10 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
         CGPoint delta = ccpSub(pos, mouseDownPos);
         scrollOffset = ccpAdd(panningStartScrollOffset, delta);
     }
-    [snapLayer mouseDragged:pos event:event];
+    
+    if(!updatedSnapLines) { // If it's all ready updated don't update again
+        [snapLayer updateLines];
+    }
     
     return;
 }
@@ -1903,6 +1910,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
 
 - (void) scrollWheel:(NSEvent *)theEvent
 {
+    snapLinesNeedUpdate = YES; // Disabled in update
     if (!appDelegate.window.isKeyWindow) return;
     if (isMouseTransforming || isPanning || currentMouseTransform != kCCBTransformHandleNone) return;
     if (!appDelegate.hasOpenedDocument) return;
@@ -1919,6 +1927,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
 - (void) forceRedraw
 {
     [self update:0];
+    snapLinesNeedUpdate = YES; // Required after the update call to prevent lines from being in random places when switching screen sizes.
 }
 
 - (void) update:(CCTime)delta
@@ -2012,6 +2021,11 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
 				CGSize sizeInPixels = [[CCDirector sharedDirector] viewSizeInPixels];
         trackingArea = [[NSTrackingArea alloc] initWithRect:NSMakeRect(0, 0, sizeInPixels.width, sizeInPixels.height) options:NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingCursorUpdate | NSTrackingActiveInKeyWindow  owner:[appDelegate cocosView] userInfo:NULL];
         [[appDelegate cocosView] addTrackingArea:trackingArea];
+        snapLinesNeedUpdate = YES;
+    }
+    if(snapLinesNeedUpdate) { // Update the snapping lines if the user is scrolling
+        [snapLayer updateLines];
+        snapLinesNeedUpdate = NO;
     }
 }
 

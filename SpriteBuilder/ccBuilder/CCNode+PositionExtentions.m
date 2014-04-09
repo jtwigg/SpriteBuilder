@@ -10,48 +10,56 @@
 
 @implementation CCNode (PositionExtentions)
 
-#pragma mark - Side Positions
+#pragma mark - Side Positions in Points
 
-- (float)top
+- (CGFloat)topInPoints
 {
-    return self.position.y + self.contentSize.height / 2;
+    return self.positionInPoints.y + (self.contentSizeInPoints.height * (1.0f - self.anchorPoint.y)) * self.scaleYInPoints;
 }
 
-- (void)setTop:(float)top {
-    self.position = ccp(self.position.x, top - self.contentSize.height / 2);
+- (void)setTopInPoints:(CGFloat)top {
+    NSPoint point = ccp(self.positionInPoints.x, top - (self.contentSizeInPoints.height * (1.0f - self.anchorPoint.y)) * self.scaleYInPoints);
+    point = [self convertPositionFromPoints:point type:self.positionType];
+    self.position = point;
 }
 
 
 
-- (float)right
+- (CGFloat)rightInPoints
 {
-    return self.position.x + self.contentSize.width / 2;
+    return self.positionInPoints.x + (self.contentSizeInPoints.width * (1.0f - self.anchorPoint.x)) * self.scaleXInPoints;
 }
 
-- (void)setRight:(float)right {
-    self.position = ccp(right - self.contentSize.width / 2, self.position.y);
+- (void)setRightInPoints:(CGFloat)right {
+    NSPoint point = ccp(right - (self.contentSizeInPoints.width * (1.0f - self.anchorPoint.x)) * self.scaleXInPoints, self.positionInPoints.y);
+    point = [self convertPositionFromPoints:point type:self.positionType];
+    self.position = point;
 }
 
 
 
-- (float)bottom
+- (CGFloat)bottomInPoints
 {
-    return self.position.y - self.contentSize.height / 2;
+    return self.positionInPoints.y - (self.contentSizeInPoints.height * self.anchorPoint.y) * self.scaleYInPoints;
 }
 
-- (void)setBottom:(float)bottom {
-    self.position = ccp(self.position.x, bottom + self.contentSize.height / 2);
+- (void)setBottomInPoints:(CGFloat)bottom {
+    NSPoint point = ccp(self.positionInPoints.x, bottom + (self.contentSizeInPoints.height * self.anchorPoint.y) * self.scaleYInPoints);
+    point = [self convertPositionFromPoints:point type:self.positionType];
+    self.position = point;
 }
 
 
 
-- (float)left
+- (CGFloat)leftInPoints
 {
-    return self.position.x - self.contentSize.width / 2;
+    return self.positionInPoints.x - (self.contentSizeInPoints.width * self.anchorPoint.x) * self.scaleXInPoints;
 }
 
-- (void)setLeft:(float)left {
-    self.position = ccp(left + self.contentSize.width / 2, self.position.y);
+- (void)setLeftInPoints:(CGFloat)left {
+    NSPoint point = ccp(left + (self.contentSizeInPoints.width * self.anchorPoint.x) * self.scaleXInPoints, self.positionInPoints.y);
+    point = [self convertPositionFromPoints:point type:self.positionType];
+    self.position = point;
 }
 
 @end

@@ -10,11 +10,13 @@
 #import "AppDelegate.h"
 #import "CocosScene.h"
 #import "CCNode+PositionExtentions.h"
+#import "PositionPropertySetter.h"
 
 #define kOptionKey 58
 
 @interface SnapLayer() {
     BOOL optionKeyDown;
+    float sensitivity;
 }
 
 @property (nonatomic, strong) AppDelegate *appDelegate;
@@ -27,7 +29,6 @@
 @implementation SnapLayer
 
 @synthesize appDelegate;
-@synthesize sensativity;
 @synthesize drawLayer;
 @synthesize verticalSnapLines;
 @synthesize horizontalSnapLines;
@@ -44,7 +45,7 @@
 
 - (void)setup {
     appDelegate = [AppDelegate appDelegate];
-    sensativity = 10;
+    sensitivity = 4;
     drawLayer = [CCDrawNode node];
     verticalSnapLines = [NSMutableArray new];
     horizontalSnapLines = [NSMutableArray new];
@@ -89,6 +90,13 @@
     }
 }
 
+#pragma mark - Snap Lines Methods
+
+- (void)updateLines {
+    [self findSnappedLines];
+    [self drawLines];
+}
+
 - (void)findSnappedLines {
     [verticalSnapLines removeAllObjects];
     [horizontalSnapLines removeAllObjects];
@@ -96,44 +104,48 @@
     for(CCNode *node in sNode.parent.children) { // Get all the nodes in the same node as the selected node
         if(node != appDelegate.selectedNode) { // Ignore the selected node
             // Snap lines from center
-            if(sNode.position.x == node.position.x) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.position.x]];
+            NSPoint point = [sNode convertPositionToPoints:sNode.position type:sNode.positionType];
+            NSPoint nPoint = [sNode convertPositionToPoints:node.position type:node.positionType];
+            if(point.x == nPoint.x) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:point.x]];
             }
-            if(sNode.position.y == node.position.y) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.position.y]];
+            if(point.y == nPoint.y) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:point.y]];
             }
             
             // Snap lines for opposite sides
-            if(sNode.left == node.right) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.left]];
+            if(abs(sNode.leftInPoints - node.rightInPoints) < 1) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.leftInPoints]];
             }
-            if(sNode.right == node.left) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.right]];
+            if(abs(sNode.rightInPoints - node.leftInPoints) < 1) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.rightInPoints]];
             }
-            if(sNode.top == node.bottom) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.top]];
+            if(abs(sNode.topInPoints - node.bottomInPoints) < 1) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.topInPoints]];
             }
-            if(sNode.bottom == node.top) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.bottom]];
+            if(abs(sNode.bottomInPoints - node.topInPoints) < 1) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.bottomInPoints]];
             }
             
             // Snap lines for same sides
-            if(sNode.left == node.left) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.left]];
+            if(abs(sNode.leftInPoints - node.leftInPoints) < 1) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.leftInPoints]];
             }
-            if(sNode.right == node.right) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.right]];
+            if(abs(sNode.rightInPoints - node.rightInPoints) < 1) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.rightInPoints]];
             }
-            if(sNode.top == node.top) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.top]];
+            if(abs(sNode.topInPoints - node.topInPoints) < 1) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.topInPoints]];
             }
-            if(sNode.bottom == node.bottom) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.bottom]];
+            if(abs(sNode.bottomInPoints - node.bottomInPoints) < 1) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.bottomInPoints]];
             }
             
         }
     }
 }
+
+#pragma mark - Snapping Methods
 
 - (void)snapIfNeeded {
     if(!optionKeyDown) { // Don't snap if the user is holding the option key
@@ -141,41 +153,44 @@
         if(appDelegate.selectedNode.parent) {
             for(CCNode *node in appDelegate.selectedNode.parent.children) {
                 if(node != appDelegate.selectedNode) {
-                    float newX = sNode.position.x;
-                    float newY = sNode.position.y;
+                    NSPoint point = [sNode convertPositionToPoints:sNode.position type:sNode.positionType];
+                    NSPoint nPoint = [sNode convertPositionToPoints:node.position type:node.positionType];
+                    float newX = point.x;
+                    float newY = point.y;
                     
                     // Snap from center
-                    if(abs(sNode.position.x - node.position.x) < self.sensativity) {
-                        newX = node.position.x;
-                    } if(abs(sNode.position.y - node.position.y) < self.sensativity) {
-                        newY = node.position.y;
+                    if(abs(point.x - nPoint.x) < sensitivity) {
+                        newX = nPoint.x;
+                    } if(abs(point.y - nPoint.y) < sensitivity) {
+                        newY = nPoint.y;
                     }
-                    appDelegate.selectedNode.position = ccp(newX, newY);
+                    point = [sNode convertPositionFromPoints:NSMakePoint(newX, newY) type:sNode.positionType];
+                    appDelegate.selectedNode.position = point;
                     
                     // Snap to opposite sides
-                    if(abs(sNode.left - node.right) < self.sensativity) {
-                        sNode.left = node.right;
-                    } else if(abs(sNode.right - node.left) < self.sensativity) {
-                        sNode.right = node.left;
+                    if(abs(sNode.leftInPoints - node.rightInPoints) < sensitivity) {
+                        sNode.leftInPoints = node.rightInPoints;
+                    } else if(abs(sNode.rightInPoints - node.leftInPoints) < sensitivity) {
+                        sNode.rightInPoints = node.leftInPoints;
                     }
-                    if(abs(sNode.top - node.bottom) < self.sensativity) {
-                        sNode.top = node.bottom;
-                    } else if(abs(sNode.bottom - node.top) < self.sensativity) {
-                        sNode.bottom = node.top;
+                    if(abs(sNode.topInPoints - node.bottomInPoints) < sensitivity) {
+                        sNode.topInPoints = node.bottomInPoints;
+                    } else if(abs(sNode.bottomInPoints - node.topInPoints) < sensitivity) {
+                        sNode.bottomInPoints = node.topInPoints;
                         newY = sNode.position.y;
                     }
                     
                     // Snap to same sides
-                    if(abs(sNode.left - node.left) < self.sensativity) {
-                        sNode.left = node.left;
-                    } else if(abs(sNode.right - node.right) < self.sensativity) {
-                        sNode.right = node.right;
+                    if(abs(sNode.leftInPoints - node.leftInPoints) < sensitivity) {
+                        sNode.leftInPoints = node.leftInPoints;
+                    } else if(abs(sNode.rightInPoints - node.rightInPoints) < sensitivity) {
+                        sNode.rightInPoints = node.rightInPoints;
                         newX = sNode.position.x;
                     }
-                    if(abs(sNode.top - node.top) < self.sensativity) {
-                        sNode.top = node.top;
-                    } else if(abs(sNode.bottom - node.bottom) < self.sensativity) {
-                        sNode.bottom = node.bottom;
+                    if(abs(sNode.topInPoints - node.topInPoints) < sensitivity) {
+                        sNode.topInPoints = node.topInPoints;
+                    } else if(abs(sNode.bottomInPoints - node.bottomInPoints) < sensitivity) {
+                        sNode.bottomInPoints = node.bottomInPoints;
                         newY = sNode.position.y;
                     }
                     
@@ -192,8 +207,11 @@
 {
     BOOL success = YES;
     
-    [self snapIfNeeded];
-    [self drawLines];
+    if ([appDelegate.selectedNode hitTestWithWorldPos:pt]) {
+        [self updateLines];
+    } else {
+        [drawLayer clear];
+    }
     
     return success;
 }
@@ -212,7 +230,11 @@
 {
     BOOL success = YES;
     
-    [drawLayer clear];
+    if ([appDelegate.selectedNode hitTestWithWorldPos:pt]) {
+        [self updateLines];
+    } else {
+        [drawLayer clear];
+    }
     
     return success;
 }

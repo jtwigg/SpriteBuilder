@@ -13,7 +13,8 @@
 - (BOOL) mouseDown:(CGPoint)pt event:(NSEvent*)event;
 - (BOOL) mouseDragged:(CGPoint)pt event:(NSEvent*)event;
 - (BOOL) mouseUp:(CGPoint)pt event:(NSEvent*)event;
+- (void)updateLines;
 
-@property (nonatomic) int sensativity;
+@property (nonatomic) CCNode *selectedNode;
 
 @end
