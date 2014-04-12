@@ -14,5 +14,7 @@
 @property (nonatomic) CGFloat rightInPoints;
 @property (nonatomic) CGFloat leftInPoints;
 @property (nonatomic) CGFloat bottomInPoints;
+@property (nonatomic) CGFloat centerXInPoints;
+@property (nonatomic) CGFloat centerYInPoints;
 
 @end

@@ -427,6 +427,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
     stageJointsLayer.scale = zoom;
     
     stageZoom = zoom;
+    snapLinesNeedUpdate = YES;
 }
 
 - (float) stageZoom

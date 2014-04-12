@@ -62,4 +62,30 @@
     self.position = point;
 }
 
+
+
+- (CGFloat)centerXInPoints
+{
+    return self.positionInPoints.x - (self.contentSizeInPoints.width * self.anchorPoint.x) * self.scaleXInPoints + (self.contentSizeInPoints.width / 2) * self.scaleXInPoints;
+}
+
+- (void)setCenterXInPoints:(CGFloat)centerXInPoints {
+    NSPoint point = ccp(centerXInPoints + (self.contentSizeInPoints.width * self.anchorPoint.x + self.contentSizeInPoints.width / 2) * self.scaleXInPoints, self.positionInPoints.y);
+    point = [self convertPositionFromPoints:point type:self.positionType];
+    self.position = point;
+}
+
+
+
+- (CGFloat)centerYInPoints
+{
+    return self.positionInPoints.y - (self.contentSizeInPoints.height * self.anchorPoint.y) * self.scaleYInPoints + (self.contentSizeInPoints.height / 2) * self.scaleYInPoints;
+}
+
+- (void)setCenterYInPoints:(CGFloat)centerYInPoints {
+    NSPoint point = ccp(self.positionInPoints.x, centerYInPoints + (self.contentSizeInPoints.height * self.anchorPoint.y + self.contentSizeInPoints.height / 2) * self.scaleYInPoints);
+    point = [self convertPositionFromPoints:point type:self.positionType];
+    self.position = point;
+}
+
 @end

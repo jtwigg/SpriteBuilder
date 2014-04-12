@@ -21,8 +21,8 @@
 
 @property (nonatomic, strong) AppDelegate *appDelegate;
 @property (nonatomic, strong) CCDrawNode *drawLayer;
-@property (nonatomic, strong) NSMutableArray *verticalSnapLines;
-@property (nonatomic, strong) NSMutableArray *horizontalSnapLines;
+@property (nonatomic, strong) NSMutableSet *verticalSnapLines;
+@property (nonatomic, strong) NSMutableSet *horizontalSnapLines;
 
 @end
 
@@ -47,8 +47,8 @@
     appDelegate = [AppDelegate appDelegate];
     sensitivity = 4;
     drawLayer = [CCDrawNode node];
-    verticalSnapLines = [NSMutableArray new];
-    horizontalSnapLines = [NSMutableArray new];
+    verticalSnapLines = [NSMutableSet new];
+    horizontalSnapLines = [NSMutableSet new];
     [self addChild:drawLayer];
     [self setupOptionKeyListener];
 }
@@ -78,16 +78,56 @@
     [drawLayer clear];
     
     CocosScene* cs = [CocosScene cocosScene];
-    for(NSNumber *x in verticalSnapLines) {
-        CGPoint start = [cs convertToViewSpace:ccp([x floatValue], 0)];
-        CGPoint end = [cs convertToViewSpace:ccp([x floatValue], cs.stageSize.height)];
-        [drawLayer drawSegmentFrom:start to:end radius:1 color:[CCColor whiteColor]];
+    CCNode *sNode = appDelegate.selectedNode;
+//    if(sNode.parent == cs.rootNode) {
+//        for(NSNumber *x in verticalSnapLines) {
+//            CGPoint start = [cs convertToViewSpace:ccp([x floatValue], 0)];
+//            CGPoint end = [cs convertToViewSpace:ccp([x floatValue], cs.stageSize.height)];
+//            [drawLayer drawSegmentFrom:start to:end radius:1 color:[CCColor whiteColor]];
+//        }
+//        for(NSNumber *y in horizontalSnapLines) {
+//            CGPoint start = [cs convertToViewSpace:ccp(0, [y floatValue])];
+//            CGPoint end = [cs convertToViewSpace:ccp(cs.stageSize.width, [y floatValue])];
+//            [drawLayer drawSegmentFrom:start to:end radius:1 color:[CCColor whiteColor]];
+//        }
+//    } else
+    {
+        for(NSNumber *x in verticalSnapLines) {
+            CGPoint start = [self getStagePointWithPoint:ccp([x floatValue], 0) forNode:sNode]; // Get the start coordinate in relation to the stage
+            int screenX = start.x; // Remember the x position so we can determine wether or not to draw the line if it's outside of the stage
+            start.y = 0; // Make sure to line draws to the bottom side of the stage node
+            start = [cs convertToViewSpace:start]; // Convert the stage coordinate to the screen coordinate
+            CGPoint end = [self getStagePointWithPoint:ccp([x floatValue], cs.stageSize.height) forNode:sNode]; // Get the end coordinate in relation to the stage
+            end.y = cs.stageSize.height; // Make sure to line draws to the top side of the stage node
+            end = [cs convertToViewSpace:end]; // Convert the stage coordinate to the screen coordinate
+            if(screenX >= 0 && screenX <= cs.stageSize.width) { // Don't draw lines outside of the stage node
+                [drawLayer drawSegmentFrom:start to:end radius:1 color:[CCColor whiteColor]];
+            }
+        }
+        for(NSNumber *y in horizontalSnapLines) {
+            CGPoint start = [self getStagePointWithPoint:ccp(0, [y floatValue]) forNode:sNode]; // Get the start coordinate in relation to the stage
+            int screenY = start.y; // Remember the y position so we can determine wether or not to draw the line if it's outside of the stage
+            start.x = 0; // Make sure to line draws to the left side of the stage node
+            start = [cs convertToViewSpace:start]; // Convert the stage coordinate to the screen coordinate
+            CGPoint end = [self getStagePointWithPoint:ccp(cs.stageSize.width, [y floatValue]) forNode:sNode]; // Get the end coordinate in relation to the stage
+            end.x = cs.stageSize.width; // Make sure to line draws to the right side of the stage node
+            end = [cs convertToViewSpace:end]; // Convert the stage coordinate to the screen coordinate
+            if(screenY >= 0 && screenY <= cs.stageSize.height) { // Don't draw lines outside of the stage node
+                [drawLayer drawSegmentFrom:start to:end radius:1 color:[CCColor whiteColor]];
+            }
+        }
     }
-    for(NSNumber *y in horizontalSnapLines) {
-        CGPoint start = [cs convertToViewSpace:ccp(0, [y floatValue])];
-        CGPoint end = [cs convertToViewSpace:ccp(cs.stageSize.width, [y floatValue])];
-        [drawLayer drawSegmentFrom:start to:end radius:1 color:[CCColor whiteColor]];
+    sNode = nil;
+}
+
+- (CGPoint)getStagePointWithPoint:(CGPoint)point forNode:(CCNode *)node {
+    CGPoint offset = point;
+    CocosScene* cs = [CocosScene cocosScene];
+	for (CCNode *parent = node.parent; parent != nil && parent != cs.rootNode; parent = parent.parent) {
+        offset.x = offset.x * parent.scaleXInPoints + parent.positionInPoints.x;
+        offset.y = offset.y * parent.scaleYInPoints + parent.positionInPoints.y;
     }
+    return offset;
 }
 
 #pragma mark - Snap Lines Methods
@@ -101,48 +141,94 @@
     [verticalSnapLines removeAllObjects];
     [horizontalSnapLines removeAllObjects];
     CCNode *sNode = appDelegate.selectedNode;
-    for(CCNode *node in sNode.parent.children) { // Get all the nodes in the same node as the selected node
-        if(node != appDelegate.selectedNode) { // Ignore the selected node
-            // Snap lines from center
-            NSPoint point = [sNode convertPositionToPoints:sNode.position type:sNode.positionType];
-            NSPoint nPoint = [sNode convertPositionToPoints:node.position type:node.positionType];
-            if(point.x == nPoint.x) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:point.x]];
+    if(sNode && sNode.parent) {
+        CocosScene* cs = [CocosScene cocosScene];
+        NSMutableArray *nodesToSearchForSnapping = [NSMutableArray arrayWithArray:sNode.parent.children]; // Try and snap with all children of the selected node's parent
+        for(CCNode *node in nodesToSearchForSnapping) {
+            if(node != appDelegate.selectedNode) { // Ignore the selected node
+                NSPoint point = [sNode convertPositionToPoints:sNode.position type:sNode.positionType];
+                NSPoint nPoint = [sNode convertPositionToPoints:node.position type:node.positionType];
+                
+                // Snap lines from anchorPoint
+                if(point.x == nPoint.x) {
+                    [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(point.x)]];
+                }
+                if(point.y == nPoint.y) {
+                    [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(point.y)]];
+                }
+                
+                // Snap lines from center
+                if(abs((sNode.leftInPoints + (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints) - (node.leftInPoints + node.contentSizeInPoints.width / 2)) < 1) {
+                    [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.leftInPoints + (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints)]];
+                } if(abs((sNode.bottomInPoints + (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints) - (node.bottomInPoints + node.contentSizeInPoints.height / 2)) < 1) {
+                    [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.bottomInPoints + (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints)]];
+                }
+                
+                // Snap lines for opposite sides
+                if(abs(sNode.leftInPoints - node.rightInPoints) < 1) {
+                    [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.leftInPoints)]];
+                }
+                if(abs(sNode.rightInPoints - node.leftInPoints) < 1) {
+                    [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.rightInPoints)]];
+                }
+                if(abs(sNode.topInPoints - node.bottomInPoints) < 1) {
+                    [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.topInPoints)]];
+                }
+                if(abs(sNode.bottomInPoints - node.topInPoints) < 1) {
+                    [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.bottomInPoints)]];
+                }
+                
+                // Snap lines for same sides
+                if(abs(sNode.leftInPoints - node.leftInPoints) < 1) {
+                    [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.leftInPoints)]];
+                }
+                if(abs(sNode.rightInPoints - node.rightInPoints) < 1) {
+                    [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.rightInPoints)]];
+                }
+                if(abs(sNode.topInPoints - node.topInPoints) < 1) {
+                    [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.topInPoints)]];
+                }
+                if(abs(sNode.bottomInPoints - node.bottomInPoints) < 1) {
+                    [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.bottomInPoints)]];
+                }
             }
-            if(point.y == nPoint.y) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:point.y]];
-            }
-            
-            // Snap lines for opposite sides
-            if(abs(sNode.leftInPoints - node.rightInPoints) < 1) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.leftInPoints]];
-            }
-            if(abs(sNode.rightInPoints - node.leftInPoints) < 1) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.rightInPoints]];
-            }
-            if(abs(sNode.topInPoints - node.bottomInPoints) < 1) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.topInPoints]];
-            }
-            if(abs(sNode.bottomInPoints - node.topInPoints) < 1) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.bottomInPoints]];
-            }
-            
-            // Snap lines for same sides
-            if(abs(sNode.leftInPoints - node.leftInPoints) < 1) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.leftInPoints]];
-            }
-            if(abs(sNode.rightInPoints - node.rightInPoints) < 1) {
-                [verticalSnapLines addObject:[NSNumber numberWithFloat:sNode.rightInPoints]];
-            }
-            if(abs(sNode.topInPoints - node.topInPoints) < 1) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.topInPoints]];
-            }
-            if(abs(sNode.bottomInPoints - node.bottomInPoints) < 1) {
-                [horizontalSnapLines addObject:[NSNumber numberWithFloat:sNode.bottomInPoints]];
-            }
-            
         }
+        
+        // Snap lines from center of sNode to center of rootNode
+//        if(sNode.parent == cs.rootNode) { // Only show snap line for the center of the rootNode if its the sNode's parent node
+//            if(abs((sNode.leftInPoints + sNode.contentSizeInPoints.width / 2) - cs.stageSize.width / 2) < 1) {
+//                [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(cs.stageSize.width / 2)]];
+//            } if(abs((sNode.bottomInPoints + sNode.contentSizeInPoints.height / 2) - cs.stageSize.height / 2) < 1) {
+//                [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(cs.stageSize.height / 2)]];
+//            }
+//        } else
+        {
+            
+            if(abs((sNode.leftInPoints + (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints) - (sNode.parent.contentSizeInPoints.width / 2) ) < 1) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.parent.contentSizeInPoints.width / 2)]];
+            }
+            if(abs((sNode.bottomInPoints + (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints) - (sNode.parent.contentSizeInPoints.height / 2)) < 1) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.parent.contentSizeInPoints.height / 2)]];
+            }
+            
+            // Snap to sides to edge of view
+#warning This probably isn't the correct left if there are anchor points noton the left
+            if(abs(sNode.leftInPoints) < sensitivity) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:0]];
+            } else if(abs(sNode.rightInPoints - sNode.parent.contentSizeInPoints.width) < sensitivity) {
+                [verticalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.parent.contentSizeInPoints.width)]];
+            }
+            if(abs(sNode.topInPoints - sNode.parent.contentSizeInPoints.height) < sensitivity) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:roundf(sNode.parent.contentSizeInPoints.height)]];
+            } else if(abs(sNode.bottomInPoints) < sensitivity) {
+                [horizontalSnapLines addObject:[NSNumber numberWithFloat:0]];
+            }
+        }
+        
+        cs = nil;
+        nodesToSearchForSnapping = nil;
     }
+    sNode = nil;
 }
 
 #pragma mark - Snapping Methods
@@ -150,22 +236,32 @@
 - (void)snapIfNeeded {
     if(!optionKeyDown) { // Don't snap if the user is holding the option key
         CCNode *sNode = appDelegate.selectedNode;
-        if(appDelegate.selectedNode.parent) {
-            for(CCNode *node in appDelegate.selectedNode.parent.children) {
-                if(node != appDelegate.selectedNode) {
+        if(sNode && sNode.parent) {
+            CocosScene* cs = [CocosScene cocosScene];
+            NSMutableArray *nodesToSearchForSnapping = [NSMutableArray arrayWithArray:sNode.parent.children]; // Try and snap with all children of the selected node's parent
+//            [nodesToSearchForSnapping addObject:sNode.parent]; // We also want to snap to the parent node
+            for(CCNode *node in nodesToSearchForSnapping) {
+                if(node != sNode) { // Ignore the selected node
                     NSPoint point = [sNode convertPositionToPoints:sNode.position type:sNode.positionType];
                     NSPoint nPoint = [sNode convertPositionToPoints:node.position type:node.positionType];
                     float newX = point.x;
                     float newY = point.y;
                     
-                    // Snap from center
+                    // Snap from anchorPoint
                     if(abs(point.x - nPoint.x) < sensitivity) {
                         newX = nPoint.x;
                     } if(abs(point.y - nPoint.y) < sensitivity) {
                         newY = nPoint.y;
                     }
-                    point = [sNode convertPositionFromPoints:NSMakePoint(newX, newY) type:sNode.positionType];
-                    appDelegate.selectedNode.position = point;
+                    CGPoint pointToSnapFromAnchorPoint = [sNode convertPositionFromPoints:NSMakePoint(newX, newY) type:sNode.positionType];
+                    appDelegate.selectedNode.position = pointToSnapFromAnchorPoint;
+                    
+                    // Snap from center
+                    if(abs((sNode.leftInPoints + (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints) - (node.leftInPoints + node.contentSizeInPoints.width / 2)) < sensitivity) {
+                        sNode.leftInPoints = node.leftInPoints + node.contentSizeInPoints.width / 2 - (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints;
+                    } if(abs((sNode.bottomInPoints + (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints) - (node.bottomInPoints + node.contentSizeInPoints.height / 2)) < sensitivity) {
+                        sNode.bottomInPoints = node.bottomInPoints + node.contentSizeInPoints.height / 2 - (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints;
+                    }
                     
                     // Snap to opposite sides
                     if(abs(sNode.leftInPoints - node.rightInPoints) < sensitivity) {
@@ -185,19 +281,85 @@
                         sNode.leftInPoints = node.leftInPoints;
                     } else if(abs(sNode.rightInPoints - node.rightInPoints) < sensitivity) {
                         sNode.rightInPoints = node.rightInPoints;
-                        newX = sNode.position.x;
                     }
                     if(abs(sNode.topInPoints - node.topInPoints) < sensitivity) {
                         sNode.topInPoints = node.topInPoints;
                     } else if(abs(sNode.bottomInPoints - node.bottomInPoints) < sensitivity) {
                         sNode.bottomInPoints = node.bottomInPoints;
-                        newY = sNode.position.y;
                     }
                     
+//                    // Snap to sides to edge of view
+//                    if(abs(sNode.leftInPoints) < sensitivity) {
+//                        sNode.leftInPoints = 0;
+//                    } else if(abs(sNode.rightInPoints - cs.stageSize.width) < sensitivity) {
+//                        sNode.rightInPoints = cs.stageSize.width;
+//                    }
+//                    if(abs(sNode.topInPoints - cs.stageSize.height) < sensitivity) {
+//                        sNode.topInPoints = cs.stageSize.height;
+//                    } else if(abs(sNode.bottomInPoints) < sensitivity) {
+//                        sNode.bottomInPoints = 0;
+//                    }
                 }
             }
+            
+            // Snap from center of sNode to center of rootNode
+//            if(sNode.parent == cs.rootNode) { // Only snap to the center of the rootNode if its the sNode's parent view
+//                if(abs((sNode.leftInPoints + sNode.contentSizeInPoints.width / 2) - cs.stageSize.width / 2) < sensitivity) {
+//                    sNode.leftInPoints = cs.stageSize.width / 2 - sNode.contentSizeInPoints.width / 2;
+//                } if(abs((sNode.bottomInPoints + sNode.contentSizeInPoints.height / 2) - cs.stageSize.height / 2) < sensitivity) {
+//                    sNode.bottomInPoints = cs.stageSize.height / 2 - sNode.contentSizeInPoints.height / 2;
+//                }
+//                
+//                // Snap to sides to edge of view
+//                if(abs(sNode.leftInPoints) < sensitivity) {
+//                    sNode.leftInPoints = 0;
+//                } else if(abs(sNode.rightInPoints - cs.stageSize.width) < sensitivity) {
+//                    sNode.rightInPoints = cs.stageSize.width;
+//                }
+//                if(abs(sNode.topInPoints - cs.stageSize.height) < sensitivity) {
+//                    sNode.topInPoints = cs.stageSize.height;
+//                } else if(abs(sNode.bottomInPoints) < sensitivity) {
+//                    sNode.bottomInPoints = 0;
+//                }
+//            } else
+            {
+#warning Update parent scale?
+                
+                if(abs((sNode.leftInPoints + (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints) - (sNode.parent.contentSizeInPoints.width / 2) ) < sensitivity) {
+                    sNode.leftInPoints = (sNode.parent.contentSizeInPoints.width / 2) - (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints;
+                    NSLog(@"AAAA");
+                }
+                if(abs((sNode.bottomInPoints + (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints) - (sNode.parent.contentSizeInPoints.height / 2)) < sensitivity) {
+                    sNode.bottomInPoints = (sNode.parent.contentSizeInPoints.height / 2) - (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints;
+                    NSLog(@"BBBB");
+                }
+                
+                
+//                if(abs((sNode.leftInPoints + (sNode.contentSizeInPoints.width / 2) * sNode.scaleXInPoints) - (sNode.parent.contentSizeInPoints.width / 2) * sNode.parent.scaleXInPoints) < sensitivity * sNode.parent.scaleXInPoints) {
+//                } if(abs((sNode.bottomInPoints + (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints) - (sNode.parent.contentSizeInPoints.height / 2) * sNode.parent.scaleYInPoints) < sensitivity * sNode.parent.scaleYInPoints) {
+//                    sNode.bottomInPoints = (sNode.parent.contentSizeInPoints.height / 2) * sNode.parent.scaleYInPoints - (sNode.contentSizeInPoints.height / 2) * sNode.scaleYInPoints;
+//                }
+                
+                // Snap to sides to edge of view
+#warning This probably isn't the correct left if there are anchor points noton the left
+                if(abs(sNode.leftInPoints) < sensitivity) {
+                    sNode.leftInPoints = 0;
+                } else if(abs(sNode.rightInPoints - sNode.parent.contentSizeInPoints.width) < sensitivity) {
+                    sNode.rightInPoints = sNode.parent.contentSizeInPoints.width;
+                }
+                if(abs(sNode.topInPoints - sNode.parent.contentSizeInPoints.height) < sensitivity) {
+                    sNode.topInPoints = sNode.parent.contentSizeInPoints.height;
+                } else if(abs(sNode.bottomInPoints) < sensitivity) {
+                    sNode.bottomInPoints = 0;
+                }
+            }
+            nodesToSearchForSnapping = nil;
+            cs = nil;
         }
+        
+        sNode = nil;
     }
+#warning make the position property update after the node snaps
     [self findSnappedLines];
 }
 
