@@ -367,7 +367,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
 
 - (void) setStageSize: (CGSize) size centeredOrigin:(BOOL)centeredOrigin
 {
-    
+    snapLinesNeedUpdate = YES; // This will cause the snap/alignment lines to update after undo/redo are called
     stageBgLayer.contentSize = size;
     stageJointsLayer.contentSize = size;
 
@@ -1597,7 +1597,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
         scrollOffset = ccpAdd(panningStartScrollOffset, delta);
     }
     
-    if(!updatedSnapLines) { // If it's all ready updated don't update again
+    if(!updatedSnapLines) { // If it all ready updated don't update again
         [snapLayer updateLines];
     }
     
@@ -1606,6 +1606,7 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
 
 - (void) updateAnimateablePropertyValue:(id)value propName:(NSString*)propertyName type:(int)type
 {
+    snapLinesNeedUpdate = YES;
     CCNode* selectedNode = appDelegate.selectedNode;
     
     NodeInfo* nodeInfo = selectedNode.userObject;
