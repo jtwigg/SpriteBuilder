@@ -154,6 +154,8 @@ static const int CCNODE_INDEX_LAST = -1;
 @synthesize itemTabView;
 @dynamic selectedNodeCanHavePhysics;
 @synthesize playingBack;
+@dynamic	showJoints;
+
 static AppDelegate* sharedAppDelegate;
 
 #pragma mark Setup functions
@@ -187,14 +189,15 @@ static AppDelegate* sharedAppDelegate;
 //However it then proceeds to call the real '[CCNode visit]' (now renamed oldVisit).
 void ApplyCustomNodeVisitSwizzle()
 {
-    Method origMethod = class_getInstanceMethod([CCNode class], @selector(visit));
-    Method newMethod = class_getInstanceMethod([CCNode class], @selector(customVisit));
+	
+    Method origMethod = class_getInstanceMethod([CCNode class], @selector(visit:parentTransform:));
+    Method newMethod = class_getInstanceMethod([CCNode class], @selector(customVisit:parentTransform:));
     
     IMP origImp = method_getImplementation(origMethod);
     IMP newImp = method_getImplementation(newMethod);
     
-    class_replaceMethod([CCNode class], @selector(visit), newImp, method_getTypeEncoding(newMethod));
-    class_addMethod([CCNode class], @selector(oldVisit), origImp, method_getTypeEncoding(origMethod));
+    class_replaceMethod([CCNode class], @selector(visit:parentTransform:), newImp, method_getTypeEncoding(newMethod));
+    class_addMethod([CCNode class], @selector(oldVisit:parentTransform:), origImp, method_getTypeEncoding(origMethod));
     
 }
 
@@ -323,6 +326,15 @@ void ApplyCustomNodeVisitSwizzle()
     projectViewTabs.delegate = self;
 }
 
+typedef enum
+{
+	eItemViewTabType_Properties,
+	eItemViewTabType_CodeConnections,
+	eItemViewTabType_Physics,
+	eItemViewTabType_Template
+	
+} eItemViewTabType;
+
 - (void) setupItemViewTabBar
 {
     NSMutableArray* items = [NSMutableArray array];
@@ -332,6 +344,7 @@ void ApplyCustomNodeVisitSwizzle()
     SMTabBarItem* itemProps = [[SMTabBarItem alloc] initWithImage:imgProps tag:0];
     itemProps.toolTip = @"Item Properties";
     itemProps.keyEquivalent = @"";
+	itemProps.tag = eItemViewTabType_Properties;
     [items addObject:itemProps];
     
     NSImage* imgCode = [NSImage imageNamed:@"inspector-codeconnections.png"];
@@ -339,6 +352,7 @@ void ApplyCustomNodeVisitSwizzle()
     SMTabBarItem* itemCode = [[SMTabBarItem alloc] initWithImage:imgCode tag:0];
     itemCode.toolTip = @"Item Code Connections";
     itemCode.keyEquivalent = @"";
+	itemCode.tag = eItemViewTabType_CodeConnections;
     [items addObject:itemCode];
     
     NSImage* imgPhysics = [NSImage imageNamed:@"inspector-physics"];
@@ -346,6 +360,7 @@ void ApplyCustomNodeVisitSwizzle()
     SMTabBarItem* itemPhysics = [[SMTabBarItem alloc] initWithImage:imgPhysics tag:0];
     itemPhysics.toolTip = @"Item Physics";
     itemPhysics.keyEquivalent = @"";
+	itemPhysics.tag = eItemViewTabType_Physics;
     [items addObject:itemPhysics];
     
     NSImage* imgTemplate = [NSImage imageNamed:@"inspector-template.png"];
@@ -353,6 +368,7 @@ void ApplyCustomNodeVisitSwizzle()
     SMTabBarItem* itemTemplate = [[SMTabBarItem alloc] initWithImage:imgTemplate tag:0];
     itemTemplate.toolTip = @"Item Templates";
     itemTemplate.keyEquivalent = @"";
+	itemTemplate.tag = eItemViewTabType_Template;
     [items addObject:itemTemplate];
     
     itemViewTabs.items = items;
@@ -394,9 +410,16 @@ void ApplyCustomNodeVisitSwizzle()
     
     // Update enable depending on if object is selected
     BOOL itemEnable = (self.selectedNode != NULL);
-    
+	BOOL physicsEnabled = (!self.selectedNode.plugIn.isJoint)  && (![self.selectedNode.plugIn.nodeClassName isEqualToString:@"CCBFile"]);
+	
     for (SMTabBarItem* item in itemViewTabs.items)
     {
+		if(item.tag == eItemViewTabType_Physics && !physicsEnabled)
+		{
+			item.enabled = NO;
+			continue;
+		}
+		
         item.enabled = allEnable && itemEnable;
     }
     
@@ -575,7 +598,7 @@ void ApplyCustomNodeVisitSwizzle()
     self.showGuides = YES;
     self.snapToGuides = YES;
     self.showStickyNotes = YES;
-    
+	
     [self.window makeKeyWindow];
 	_applicationLaunchComplete = YES;
     
@@ -601,7 +624,26 @@ void ApplyCustomNodeVisitSwizzle()
 - (void) modalDialogTitle: (NSString*)title message:(NSString*)msg
 {
     NSAlert* alert = [NSAlert alertWithMessageText:title defaultButton:@"OK" alternateButton:NULL otherButton:NULL informativeTextWithFormat:@"%@",msg];
-    [alert runModal];
+	[alert runModal];
+
+}
+
+- (void) modalDialogTitle: (NSString*)title message:(NSString*)msg disableKey:(NSString*)key
+{
+	if(![self showHelpDialog:key])
+	{
+		return;
+	}
+	
+	NSAlert* alert = [NSAlert alertWithMessageText:title defaultButton:@"OK" alternateButton:NULL otherButton:NULL informativeTextWithFormat:@"%@",msg];
+	
+	[alert setShowsSuppressionButton:YES];
+	[alert runModal];
+	
+	if ([[alert suppressionButton] state] == NSOnState) {
+        // Suppress this alert from now on.
+		[self disableHelpDialog:key];
+    }
 }
 
 - (void) modalStatusWindowStartWithTitle:(NSString*)title
@@ -724,6 +766,24 @@ void ApplyCustomNodeVisitSwizzle()
 
 - (void) setSelectedNodes:(NSArray*) selection
 {
+	
+	//Ensure that the selected joint is on top.
+	CCBPhysicsJoint* selectedJoint = [selection findFirst:^BOOL(CCNode * node, int idx) {
+		return node.plugIn.isJoint;
+	}];
+	
+	if(selectedJoint)
+	{
+		[[SceneGraph instance].joints.all forEach:^(CCNode * joint, int idx) {
+			joint.zOrder = (joint == selectedJoint) ? 1 : 0;
+		}];
+		
+		selection = [NSArray arrayWithObject:selectedJoint];
+	}
+	
+	
+
+	
     [self willChangeValueForKey:@"selectedNode"];
     [self willChangeValueForKey:@"selectedNodes"];
     [physicsHandler willChangeSelection];
@@ -738,7 +798,6 @@ void ApplyCustomNodeVisitSwizzle()
         {
             return;
         }
-
     }
     
     
@@ -1038,7 +1097,7 @@ static BOOL hideAllToNextSeparator;
         
         if([sequenceHandler currentSequence].timelinePosition != 0.0f || ![sequenceHandler currentSequence].autoPlay)
         {
-            paneOffset = [self addInspectorPropertyOfType:@"SeparatorSub" name:@"name" displayName:@"Must select frame Zero of the autoPlay timeline" extra:@"" readOnly:YES affectsProps:nil atOffset:0 isCodeConnection:NO];
+            paneOffset = [self addInspectorPropertyOfType:@"SeparatorSub" name:@"name" displayName:@"Must select frame Zero of the autoplay timeline" extra:@"" readOnly:YES affectsProps:nil atOffset:0 isCodeConnection:NO];
             displayPluginProperties = NO;
         }
     }
@@ -1070,7 +1129,9 @@ static BOOL hideAllToNextSeparator;
             if (!usesFlashSkew && [name isEqualToString:@"rotationalSkewY"]) continue;
             
             // Handle read only for animated properties
-            if ([self isDisabledProperty:name animatable:animated] || self.selectedNode.locked)
+            if ([self isDisabledProperty:name animatable:animated] ||
+                self.selectedNode.locked ||
+                (self.selectedNode.plugIn.isJoint && self.selectedNode.parent.locked))
             {
                 readOnly = YES;
             }
@@ -1313,6 +1374,9 @@ static BOOL hideAllToNextSeparator;
     
     [dict setObject:[NSNumber numberWithInt:doc.docDimensionsType] forKey:@"docDimensionsType"];
     
+    
+    //////////////    //////////////    //////////////    //////////////    //////////////
+    //Joints
     NSMutableArray * joints = [NSMutableArray array];
     for (CCNode * joint in g.joints.all)
     {
@@ -1320,6 +1384,12 @@ static BOOL hideAllToNextSeparator;
     }
     
     [dict setObject:joints forKey:@"joints"];
+
+	if ([AppDelegate appDelegate].projectSettings.engine != CCBTargetEngineSpriteKit)
+		[dict setObject:[g.joints serialize] forKey:@"SequencerJoints"];
+    
+    
+    //////////////    //////////////    //////////////    //////////////    //////////////
     [dict setObject:@(doc.UUID) forKey:@"UUID"];
     
     // Resolutions
@@ -1596,10 +1666,11 @@ static BOOL hideAllToNextSeparator;
     self.selectedNodes = NULL;
     
     SceneGraph * g = [SceneGraph setInstance:[SceneGraph new]];
+    [g.joints deserialize:doc[@"SequencerJoints"]];
     g.rootNode = loadedRoot;
     
-    [loadedJoints forEach:^(CCNode * child, int idx) {
-        [g.joints.node addChild:child];
+    [loadedJoints forEach:^(CCBPhysicsJoint * child, int idx) {
+        [g.joints addJoint:child];
     }];
 
     
@@ -1847,6 +1918,8 @@ static BOOL hideAllToNextSeparator;
     
     [self updateWarningsButton];
     [self updateSmallTabBarsEnabled];
+    
+    self.window.representedFilename = @"";
 }
 
 - (BOOL) openProject:(NSString*) fileName
@@ -1893,7 +1966,7 @@ static BOOL hideAllToNextSeparator;
     localizationEditorHandler.managedFile = langFile;
     
     // Update the title of the main window
-    [window setTitle:[NSString stringWithFormat:@"SpriteBuilder - %@", [fileName lastPathComponent]]];
+    [window setTitle:[NSString stringWithFormat:@"%@ - SpriteBuilder", [[fileName stringByDeletingLastPathComponent] lastPathComponent]]];
     
     // Open ccb file for project if there is only one
     NSArray* resPaths = project.absoluteResourcePaths;
@@ -1928,6 +2001,8 @@ static BOOL hideAllToNextSeparator;
 
     Cocos2dUpdater *cocos2dUpdater = [[Cocos2dUpdater alloc] initWithAppDelegate:self projectSettings:projectSettings];
     [cocos2dUpdater updateAndBypassIgnore:NO];
+
+    self.window.representedFilename = [fileName stringByDeletingLastPathComponent];
 
     return YES;
 }
@@ -2486,6 +2561,17 @@ static BOOL hideAllToNextSeparator;
     }
 }
 
+-(BOOL)showJoints
+{
+	return ![SceneGraph instance].joints.node.hidden;
+}
+
+-(void)setShowJoints:(BOOL)showJoints
+{
+	[SceneGraph instance].joints.node.hidden = !showJoints;
+	[sequenceHandler.outlineHierarchy reloadItem:[SceneGraph instance].joints reloadChildren:YES];
+}
+
 -(void)addJoint:(NSString*)jointName at:(CGPoint)pt
 {
     SceneGraph* g = [SceneGraph instance];
@@ -2509,6 +2595,22 @@ static BOOL hideAllToNextSeparator;
     PlugInNode* pluginDescription = [[PlugInManager sharedManager] plugInNodeNamed:nodeName];
     if(pluginDescription.isJoint)
     {
+		if(!sequenceHandler.currentSequence.autoPlay || sequenceHandler.currentSequence.timelinePosition != 0.0f)
+		{
+			[self modalDialogTitle:@"Changing Timeline" message:@"In order to add a new joint, you must be viewing the first frame of the 'autoplay' timeline." disableKey:@"AddJointSetSequencer"];
+			
+			SequencerSequence * autoPlaySequence = [currentDocument.sequences findFirst:^BOOL(SequencerSequence * sequence, int idx) {
+				return sequence.autoPlay;
+			}];
+
+			if(autoPlaySequence)
+			{
+				sequenceHandler.currentSequence = autoPlaySequence;
+				sequenceHandler.currentSequence.timelinePosition = 0.0f;
+			}
+		}
+
+		
         [self addJoint:nodeName at:pt];
         return;
     }
@@ -4770,6 +4872,30 @@ static BOOL hideAllToNextSeparator;
 		[self.projectSettings store];
         [[NSApplication sharedApplication] terminate:self];
     }
+}
+
+-(BOOL)showHelpDialog:(NSString*)type
+{
+	NSDictionary * helpDialogs = [[NSUserDefaults standardUserDefaults] objectForKey:@"HelpDialogs"];
+	if(helpDialogs == nil || !helpDialogs[type])
+		return YES;
+	
+	//Its presence indicates we don't show the dialog.
+	return NO;
+			
+}
+-(void)disableHelpDialog:(NSString*)type
+{
+	NSMutableDictionary * helpDialogs = [NSMutableDictionary dictionary];
+	
+	if([[NSUserDefaults standardUserDefaults] objectForKey:@"HelpDialogs"])
+	{
+		NSDictionary * temp = [[NSUserDefaults standardUserDefaults] objectForKey:@"HelpDialogs"];
+		helpDialogs = [NSMutableDictionary dictionaryWithDictionary:temp];
+	}
+	
+	helpDialogs[type] = @(NO);
+	[[NSUserDefaults standardUserDefaults] setObject:helpDialogs forKey:@"HelpDialogs"];
 }
 
 - (IBAction)showHelp:(id)sender
