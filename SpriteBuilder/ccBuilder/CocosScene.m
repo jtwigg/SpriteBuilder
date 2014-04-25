@@ -1941,6 +1941,13 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
     scrollOffset.y = scrollOffset.y+dy;
 }
 
+#pragma mark Post update methods
+
+// This method is called once anytime the selection changes
+- (void)selectionUpdated {
+    snapLinesNeedUpdate = YES;
+}
+
 #pragma mark Updates every frame
 
 - (void) forceRedraw
@@ -2002,7 +2009,6 @@ static NSString * kZeroContentSizeImage = @"sel-round.png";
         [renderedScene end];
         [borderDevice texture].antialiased = NO;
     }
-    
     // Update selection & physics editor
     [selectionLayer removeAllChildrenWithCleanup:YES];
     [physicsLayer removeAllChildrenWithCleanup:YES];

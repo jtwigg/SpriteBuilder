@@ -177,6 +177,8 @@ enum {
 - (void) updateSelection;
 - (void) selectBehind;
 
+- (void) selectionUpdated;
+
 // Event handling forwarded by view
 - (void)mouseMoved:(NSEvent *)event;
 - (void)mouseEntered:(NSEvent *)event;
