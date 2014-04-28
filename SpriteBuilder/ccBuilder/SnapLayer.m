@@ -299,7 +299,6 @@
                         node.position = point;
                     }
                 }
-                NSLog(@"(%f, %f)", difference.x, difference.y);
             }
         }
     }
