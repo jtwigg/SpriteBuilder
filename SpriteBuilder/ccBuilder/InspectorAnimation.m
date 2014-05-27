@@ -7,12 +7,22 @@
 //
 
 #import "InspectorAnimation.h"
+#import "CCBPCCBFile.h"
+#import "CCBAnimationManager.h"
 
 @implementation InspectorAnimation
 
 -(void)refresh
 {
-    self.sele
+    if([selection isKindOfClass:[CCBPCCBFile class]])
+    {
+        CCBPCCBFile * ccbFile = (CCBPCCBFile*)selection;
+     
+    
+    }
+
+    
+    [self.animationsComboBox addItemsWithObjectValues:nil];
     
 }
 

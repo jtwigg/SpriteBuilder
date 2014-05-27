@@ -69,6 +69,18 @@
 			<key>name</key>
 			<string>ccbFile</string>
 		</dict>
+		<dict>
+			<key>defaultSerialization</key>
+			<string></string>
+			<key>animatable</key>
+			<true/>
+			<key>displayName</key>
+			<string>Animation</string>
+			<key>type</key>
+			<string>Animation</string>
+			<key>name</key>
+			<string>animation</string>
+		</dict>
 	</array>
 </dict>
 </plist>
