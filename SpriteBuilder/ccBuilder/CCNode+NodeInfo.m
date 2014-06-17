@@ -254,7 +254,7 @@ NSString * kAnimationOfPhysicsWarning = @"kAnimationOfPhysicsWarning";
     kCCBKeyframeType keyframeType = [SequencerKeyframe keyframeTypeFromPropertyType:propType];
     
     // Ensure that the keyframe type is supported
-    if (keyframeType != kCCBKeyframeTypeUndefined)
+    if (keyframeType == kCCBKeyframeTypeUndefined)
     {
         return nil;
     }
@@ -905,16 +905,23 @@ NSString * kAnimationOfPhysicsWarning = @"kAnimationOfPhysicsWarning";
     return info.startTransform;
 }
 
-- (void) setStartTransform:(CGAffineTransform)startTransform
-{
-    NodeInfo* info = self.userObject;
-    info.startTransform = startTransform;
-}
-
 - (CGPoint) transformStartPosition
 {
     NodeInfo* info = self.userObject;
     return CGPointApplyAffineTransform(self.anchorPointInPoints, info.startTransform);
+}
+
+- (CGPoint) startAnchorPoint
+{
+    NodeInfo* info = self.userObject;
+    return info.startAnchorPoint;
+}
+
+- (void) cacheStartTransformAndAnchor
+{
+    NodeInfo* info = self.userObject;
+    info.startTransform = self.nodeToWorldTransform;
+		info.startAnchorPoint = self.anchorPoint;
 }
 
 - (void) setUsesFlashSkew:(BOOL)seqExpanded

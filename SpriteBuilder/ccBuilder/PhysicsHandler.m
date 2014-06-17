@@ -47,6 +47,13 @@
 #define kCCBPhysicsSnapDist 10
 
 
+@interface CCResponderManager (Private)
+
+-(void)cancelAllResponders;
+
+@end
+
+
 @implementation PhysicsHandler
 
 
@@ -353,6 +360,7 @@
     outletWindow = nil;
     [_currentJoint refreshOutletStatus];
     _currentJoint = nil;
+	[[CCDirector sharedDirector].responderManager cancelAllResponders];
     
 }
 
@@ -698,7 +706,7 @@
     {
 		if(joint.bodyB == body)
 		{
-			[[AppDelegate appDelegate] modalDialogTitle:@"Duplicate body connected." message:[NSString stringWithFormat:@"You've already connected BodyB to this physics body:%@",body.displayName]];
+			[[AppDelegate appDelegate] modalDialogTitle:@"Duplicate body connected" message:[NSString stringWithFormat:@"You've already connected Body B to this physics body (%@).",body.displayName]];
 			return;
 		}
 
@@ -713,7 +721,7 @@
     {
 		if(joint.bodyA == body)
 		{
-			[[AppDelegate appDelegate] modalDialogTitle:@"Duplicate body connected." message:[NSString stringWithFormat:@"You've already connected BodyA to this physics body:%@",body.displayName]];
+			[[AppDelegate appDelegate] modalDialogTitle:@"Duplicate body connected" message:[NSString stringWithFormat:@"You've already connected Body A to this physics body (%@).",body.displayName]];
 			return;
 		}
 

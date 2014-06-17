@@ -117,6 +117,8 @@ enum {
 @class LocalizationEditorHandler;
 @class PhysicsHandler;
 @class WarningTableViewHandler;
+@class AnimationPlaybackManager;
+@class RegistrationWindow;
 
 @protocol AppDelegate_UndeclaredSelectors <NSObject>
 @optional
@@ -172,6 +174,7 @@ enum {
     
     // Outline view heirarchy
     SequencerHandler* sequenceHandler;
+    IBOutlet AnimationPlaybackManager *animationPlaybackManager;
     IBOutlet NSOutlineView* outlineHierarchy;
     IBOutlet SequencerScrubberSelectionView* scrubberSelectionView;
     IBOutlet NSTextField* timeDisplay;
@@ -201,6 +204,8 @@ enum {
     IBOutlet NSPopUpButton* menuTimelineChainedPopup;
     IBOutlet NSMenu* menuTimelineChained;
     IBOutlet NSTextField* lblTimelineChained;
+    
+    IBOutlet NSMenuItem* _menuItemExperimentalSpriteKitProject;
 
     CGSize defaultCanvasSizes[kCCBNumCanvasDevices+1];
     // IBOutlet NSMenuItem* menuItemStageCentered;
@@ -270,6 +275,7 @@ enum {
     
     // About window
     AboutWindow* aboutWindow;
+    RegistrationWindow* registrationWindow;
     
     // Animation playback
     BOOL playingBack;
@@ -299,6 +305,7 @@ enum {
 @property (nonatomic,strong) CCBDocument* currentDocument;
 @property (nonatomic,assign) BOOL hasOpenedDocument;
 @property (weak, nonatomic,readonly) CCBGLView* cocosView;
+
 
 @property (nonatomic,strong) IBOutlet PropertyInspectorHandler* propertyInspectorHandler;
 
@@ -356,10 +363,12 @@ enum {
 // Sequencer
 @property (nonatomic, readonly) BOOL playingBack;
 
+
 // Methods
 + (AppDelegate*) appDelegate;
 
 - (void) updateTimelineMenu;
+- (void) gotoAutoplaySequence;
 - (void) updateInspectorFromSelection;
 - (void) switchToDocument:(CCBDocument*) document;
 - (void) closeLastDocument;
