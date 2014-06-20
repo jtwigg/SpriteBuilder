@@ -81,4 +81,9 @@
     return [ccbFile customProperties];
 }
 
+-(NSArray*)animations
+{
+	return nil;
+}
+
 @end

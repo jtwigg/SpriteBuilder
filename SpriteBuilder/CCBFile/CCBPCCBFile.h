@@ -23,12 +23,17 @@
  */
 
 #import "cocos2d.h"
+#import "InspectorAnimation.h"
 
-@interface CCBPCCBFile : CCNode
+@interface CCBPCCBFile :  CCNode <SBAnimatableNode>
 {
     CCNode* ccbFile;
 }
 
 @property (nonatomic,strong) CCNode* ccbFile;
+@property (nonatomic,strong) NSString * animation;
+@property (nonatomic,strong) NSString * label;
+@property (nonatomic,assign) float tween;
+@property (nonatomic,assign) float playbackSpeed;
 
 @end

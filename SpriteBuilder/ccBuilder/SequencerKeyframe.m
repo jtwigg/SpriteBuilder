@@ -136,9 +136,9 @@ NSString * kClipboardChannelKeyframes   = @"com.cocosbuilder.channelkeyframes";
     {
         return kCCBKeyframeTypeFloat;
     }
-    else if ([type isEqualToString:@"String"])
+    else if ([type isEqualToString:@"Animation"])
     {
-        return kCCBKeyframeTypeString;
+        return kCCBKeyframeTypeAnimation;
     }
     else
     {

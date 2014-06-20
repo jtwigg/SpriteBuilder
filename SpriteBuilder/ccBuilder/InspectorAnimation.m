@@ -12,18 +12,22 @@
 
 @implementation InspectorAnimation
 
+- (id) initWithSelection:(CCNode*)s andPropertyName:(NSString*)pn andDisplayName:(NSString*) dn andExtra:(NSString*)e
+{
+	NSAssert([s conformsToProtocol:@protocol(SBAnimatableNode) ], @"Should conform to this protocol");
+	
+	return [super initWithSelection:s andPropertyName:pn andDisplayName:dn andExtra:e];
+}
+
 -(void)refresh
 {
-    if([selection isKindOfClass:[CCBPCCBFile class]])
-    {
-        CCBPCCBFile * ccbFile = (CCBPCCBFile*)selection;
-     
+    [self.animationsComboBox addItemsWithObjectValues:self.animatableNode.animations];
     
-    }
+}
 
-    
-    [self.animationsComboBox addItemsWithObjectValues:nil];
-    
+-(id<SBAnimatableNode>)animatableNode
+{
+	return (id<SBAnimatableNode>)selection;
 }
 
 @end
