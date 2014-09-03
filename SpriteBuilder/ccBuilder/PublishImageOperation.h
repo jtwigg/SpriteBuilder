@@ -3,9 +3,8 @@
 #import "CCBWarnings.h"
 
 @class DateCache;
-@class CCBPublisher;
+@class CCBDirectoryPublisher;
 @class FCFormatConverter;
-@class PublishRenamedFilesLookup;
 @protocol PublishFileLookupProtocol;
 
 @interface PublishImageOperation : PublishBaseOperation
@@ -19,8 +18,10 @@
 @property (nonatomic, strong) id<PublishFileLookupProtocol> fileLookup;
 
 @property (nonatomic) BOOL isSpriteSheet;
-@property (nonatomic) CCBPublisherTargetType targetType;
+@property (nonatomic) CCBPublisherOSType osType;
 
 @property (nonatomic, strong) DateCache *modifiedFileDateCache;
+
+@property (nonatomic) BOOL intermediateProduct;
 
 @end

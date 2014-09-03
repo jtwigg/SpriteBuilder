@@ -92,6 +92,7 @@ typedef struct _PVRTexHeader
         self.outputFormat = TupacOutputFormatCocos2D;
         self.maxTextureSize = 2048;
         self.padding = 1;
+        self.trim = YES;
     }
     return self;
 }
@@ -182,6 +183,20 @@ typedef struct _PVRTexHeader
     
     CFRelease(imageData);
     
+    // HACK to fix jitter
+    if (wTrimmed % 2 == 1) wTrimmed += 1;
+    if (hTrimmed % 2 == 1) hTrimmed += 1;
+    if (wTrimmed + x > w)
+    {
+        x = 0;
+        wTrimmed = w;
+    }
+    if (hTrimmed + y > h)
+    {
+        y = 0;
+        hTrimmed = h;
+    }
+    
     return NSMakeRect(x, y, wTrimmed, hTrimmed);
 }
 
@@ -225,7 +240,15 @@ typedef struct _PVRTexHeader
         int w = (int)CGImageGetWidth(srcImage);
         int h = (int)CGImageGetHeight(srcImage);
         
-        NSRect trimRect = [Tupac trimmedRectForImage:srcImage];
+        NSRect trimRect;
+        if (_trim)
+        {
+            trimRect = [Tupac trimmedRectForImage:srcImage];
+        }
+        else
+        {
+            trimRect = CGRectMake(0, 0, w, h);
+        }
         
         if (!colorSpace)
         {
@@ -539,7 +562,8 @@ typedef struct _PVRTexHeader
     if (self.previewFile)
     {
         NSError *error;
-        if (![[NSFileManager defaultManager] removeItemAtPath:self.previewFile error:&error])
+        if (![[NSFileManager defaultManager] removeItemAtPath:self.previewFile error:&error]
+            && error.code != NSFileNoSuchFileError)
         {
             NSLog(@"[TEXTUREPACKER] Error removing preview image %@: %@", self.previewFile, error);
         }

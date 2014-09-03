@@ -16,6 +16,7 @@
 @property (nonatomic) int format_android;
 @property (nonatomic) BOOL format_android_dither;
 @property (nonatomic) BOOL format_android_compress;
+@property (nonatomic) BOOL trim;
 
 @end
 
@@ -61,7 +62,7 @@ static NSMutableSet *__spriteSheetPreviewsGenerated;
 
 - (void)publishSpriteSheet
 {
-    [_publishingTaskStatusProgress updateStatusText:[NSString stringWithFormat:@"Generating sprite sheet %@...", [[_subPath stringByAppendingPathExtension:@"plist"] lastPathComponent]]];
+    [_publishingTaskStatusProgress updateStatusText:[NSString stringWithFormat:@"Generating sprite sheet %@...", [_subPath lastPathComponent]]];
 
     [self loadSettings];
 
@@ -73,7 +74,15 @@ static NSMutableSet *__spriteSheetPreviewsGenerated;
 
     [self processWarnings];
 
-    [CCBFileUtil setModificationDate:_srcSpriteSheetDate forFile:[_spriteSheetFile stringByAppendingPathExtension:@"plist"]];
+    [self setDateForCreatedFiles:createdFiles];
+}
+
+- (void)setDateForCreatedFiles:(NSArray *)createFiles
+{
+    for (NSString *filePath in createFiles)
+    {
+        [CCBFileUtil setModificationDate:_srcSpriteSheetDate forFile:filePath];
+    }
 }
 
 - (void)addCreatedPNGFilesToCreatedFilesSet:(NSArray *)createdFiles
@@ -118,6 +127,7 @@ static NSMutableSet *__spriteSheetPreviewsGenerated;
     _packer.previewFile = _previewFilePath;
     _packer.directoryPrefix = _subPath;
     _packer.border = YES;
+    _packer.trim = _trim;
 
     [self setImageFormatDependingOnTarget];
 
@@ -126,13 +136,13 @@ static NSMutableSet *__spriteSheetPreviewsGenerated;
 
 - (void)setImageFormatDependingOnTarget
 {
-    if (_targetType == kCCBPublisherTargetTypeIPhone)
+    if (_osType == kCCBPublisherOSTypeIOS)
     {
         _packer.imageFormat = self.format_ios;
         _packer.compress = self.format_ios_compress;
         _packer.dither = self.format_ios_dither;
     }
-    else if (_targetType == kCCBPublisherTargetTypeAndroid)
+    else if (_osType == kCCBPublisherOSTypeAndroid)
     {
         _packer.imageFormat = self.format_android;
         _packer.compress = self.format_android_compress;
@@ -162,12 +172,13 @@ static NSMutableSet *__spriteSheetPreviewsGenerated;
 
 - (void)loadSettings
 {
-    self.format_ios = [[_projectSettings valueForRelPath:_subPath andKey:@"format_ios"] intValue];
-    self.format_ios_dither = [[_projectSettings valueForRelPath:_subPath andKey:@"format_ios_dither"] boolValue];
-    self.format_ios_compress = [[_projectSettings valueForRelPath:_subPath andKey:@"format_ios_compress"] boolValue];
-    self.format_android = [[_projectSettings valueForRelPath:_subPath andKey:@"format_android"] intValue];
-    self.format_android_dither = [[_projectSettings valueForRelPath:_subPath andKey:@"format_android_dither"] boolValue];
-    self.format_android_compress = [[_projectSettings valueForRelPath:_subPath andKey:@"format_android_compress"] boolValue];
+    self.format_ios = [[_projectSettings propertyForRelPath:_subPath andKey:@"format_ios"] intValue];
+    self.format_ios_dither = [[_projectSettings propertyForRelPath:_subPath andKey:@"format_ios_dither"] boolValue];
+    self.format_ios_compress = [[_projectSettings propertyForRelPath:_subPath andKey:@"format_ios_compress"] boolValue];
+    self.format_android = [[_projectSettings propertyForRelPath:_subPath andKey:@"format_android"] intValue];
+    self.format_android_dither = [[_projectSettings propertyForRelPath:_subPath andKey:@"format_android_dither"] boolValue];
+    self.format_android_compress = [[_projectSettings propertyForRelPath:_subPath andKey:@"format_android_compress"] boolValue];
+    self.trim = ![[_projectSettings propertyForRelPath:_subPath andKey:@"keepSpritesUntrimmed"] boolValue];
 }
 
 - (void)cancel
@@ -178,8 +189,8 @@ static NSMutableSet *__spriteSheetPreviewsGenerated;
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"file: %@, res: %@, targetType: %i, filefull: %@, srcdirs: %@, publishDirectory: %@, date: %@",
-                     [_spriteSheetFile lastPathComponent], _resolution, _targetType, _spriteSheetFile, _srcDirs, _publishDirectory, _srcSpriteSheetDate];
+    return [NSString stringWithFormat:@"file: %@, res: %@, osType: %i, filefull: %@, srcdirs: %@, publishDirectory: %@, date: %@",
+                                      [_spriteSheetFile lastPathComponent], _resolution, _osType, _spriteSheetFile, _srcDirs, _publishDirectory, _srcSpriteSheetDate];
 }
 
 

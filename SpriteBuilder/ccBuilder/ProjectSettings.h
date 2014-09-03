@@ -23,83 +23,33 @@
  */
 
 #import <Foundation/Foundation.h>
+#import "CCBPublisherTypes.h"
 
 #define kCCBProjectSettingsVersion 1
 #define kCCBDefaultExportPlugIn @"ccbi"
 
-enum
+typedef enum
 {
-    kCCBDesignTargetFlexible,
-    kCCBDesignTargetFixed,
-};
+    kCCBDesignTargetFlexible = 0,
+    kCCBDesignTargetFixed = 1,
+} CCBDesignTarget;
 
-enum
+typedef enum
 {
-    kCCBOrientationLandscape,
-    kCCBOrientationPortrait,
-};
+    kCCBOrientationLandscape = 0,
+    kCCBOrientationPortrait = 1,
+} CCBOrientation;
 
 typedef NS_ENUM(int8_t, CCBTargetEngine)
 {
 	CCBTargetEngineCocos2d = 0,
-	CCBTargetEngineSpriteKit,
+	CCBTargetEngineSpriteKit = 1,
 };
-
-typedef enum
-{
-    PublishEnvironmentDevelop = 0,
-    PublishEnvironmentRelease,
-} SBPublishEnvironment;
 
 @class RMResource;
 @class CCBWarnings;
 
 @interface ProjectSettings : NSObject
-{
-    NSString* projectPath;
-    NSMutableArray* resourcePaths;
-    NSMutableDictionary* resourceProperties;
-    
-    NSString* publishDirectory;
-    NSString* publishDirectoryAndroid;
-
-    BOOL publishEnablediPhone;
-    BOOL publishEnabledAndroid;
-
-    BOOL publishResolution_ios_phone;
-    BOOL publishResolution_ios_phonehd;
-    BOOL publishResolution_ios_tablet;
-    BOOL publishResolution_ios_tablethd;
-    BOOL publishResolution_android_phone;
-    BOOL publishResolution_android_phonehd;
-    BOOL publishResolution_android_tablet;
-    BOOL publishResolution_android_tablethd;
-    
-    int publishAudioQuality_ios;
-    int publishAudioQuality_android;
-    
-    BOOL isSafariExist;
-    BOOL isChromeExist;
-    BOOL isFirefoxExist;
-    
-    BOOL flattenPaths;
-    BOOL publishToZipFile;
-    BOOL onlyPublishCCBs;
-    NSString* exporter;
-    NSMutableArray* availableExporters;
-    BOOL deviceOrientationPortrait;
-    BOOL deviceOrientationUpsideDown;
-    BOOL deviceOrientationLandscapeLeft;
-    BOOL deviceOrientationLandscapeRight;
-    int resourceAutoScaleFactor;
-
-    NSString* versionStr;
-    BOOL needRepublish;
-    
-    CCBWarnings* lastWarnings;
-    
-    BOOL storing;
-}
 
 // Full path to the project file, e.g. /foo/baa.spritebuilder/baa.ccbproj
 @property (nonatomic, copy) NSString* projectPath;
@@ -110,7 +60,7 @@ typedef enum
 @property (nonatomic, readonly) NSString* projectPathHashed;
 @property (nonatomic, strong) NSMutableArray* resourcePaths;
 
-@property (nonatomic,assign) BOOL publishEnablediPhone;
+@property (nonatomic,assign) BOOL publishEnabledIOS;
 @property (nonatomic,assign) BOOL publishEnabledAndroid;
 
 @property (nonatomic, copy) NSString* publishDirectory;
@@ -128,11 +78,6 @@ typedef enum
 @property (nonatomic,assign) int publishAudioQuality_ios;
 @property (nonatomic,assign) int publishAudioQuality_android;
 
-@property (nonatomic,assign) BOOL isSafariExist;
-@property (nonatomic,assign) BOOL isChromeExist;
-@property (nonatomic,assign) BOOL isFirefoxExist;
-
-@property (nonatomic, assign) BOOL flattenPaths;
 @property (nonatomic, assign) BOOL publishToZipFile;
 @property (nonatomic, assign) BOOL onlyPublishCCBs;
 @property (nonatomic, readonly) NSArray* absoluteResourcePaths;
@@ -145,11 +90,13 @@ typedef enum
 @property (nonatomic, assign) BOOL deviceOrientationLandscapeLeft;
 @property (nonatomic, assign) BOOL deviceOrientationLandscapeRight;
 @property (nonatomic, assign) int resourceAutoScaleFactor;
-@property (nonatomic, assign) NSInteger publishEnvironment;
+@property (nonatomic, assign) CCBPublishEnvironment publishEnvironment;
 
 // *** Temporary property, do not persist ***
 @property (nonatomic) BOOL canUpdateCocos2D;
-@property (nonatomic) NSMutableArray *cocos2dUpdateIgnoredVersions;
+
+@property (nonatomic, strong) NSMutableArray *cocos2dUpdateIgnoredVersions;
+@property (nonatomic) BOOL excludedFromPackageMigration;
 
 @property (nonatomic, copy) NSString* versionStr;
 @property (nonatomic, assign) BOOL needRepublish;
@@ -163,9 +110,11 @@ typedef enum
 
 @property (nonatomic, readonly) CCBTargetEngine engine;
 
+
 - (id) initWithSerialization:(id)dict;
 - (BOOL) store;
 - (id) serialize;
+
 
 // *** Smart Sprite Sheets ***
 - (void) makeSmartSpriteSheet:(RMResource*) res;
@@ -173,21 +122,24 @@ typedef enum
 - (NSArray*) smartSpriteSheetDirectories;
 
 // *** Setting and reading file properties ***
-- (void) setValue:(id) val forResource:(RMResource*) res andKey:(id) key;
-- (void) setValue:(id)val forRelPath:(NSString *)relPath andKey:(id)key;
-- (id) valueForResource:(RMResource*) res andKey:(id) key;
-- (id) valueForRelPath:(NSString*) relPath andKey:(id) key;
-- (void) removeObjectForResource:(RMResource*) res andKey:(id) key;
-- (void) removeObjectForRelPath:(NSString*) relPath andKey:(id) key;
-- (BOOL) isDirtyResource:(RMResource*) res;
-- (BOOL) isDirtyRelPath:(NSString*) relPath;
+// Will mark the resource as dirty if old value is not equal to new value
+- (void)setProperty:(id)newValue forResource:(RMResource *)res andKey:(id <NSCopying>)key;
+// Will mark the resource as dirty if old value is not equal to new value
+- (void)setProperty:(id)newValue forRelPath:(NSString *)relPath andKey:(id <NSCopying>)key;
+- (id)propertyForResource:(RMResource *)res andKey:(id <NSCopying>)key;
+- (id)propertyForRelPath:(NSString *)relPath andKey:(id <NSCopying>)key;
+// Will mark the resource as dirty
+- (void)removePropertyForResource:(RMResource *)res andKey:(id <NSCopying>)key;
+// Will mark the resource as dirty
+- (void)removePropertyForRelPath:(NSString *)relPath andKey:(id <NSCopying>)key;
 
 // *** Dirty markers ***
+- (BOOL) isDirtyResource:(RMResource*) res;
+- (BOOL) isDirtyRelPath:(NSString*) relPath;
 - (void) markAsDirtyResource:(RMResource*) res;
 - (void) markAsDirtyRelPath:(NSString*) relPath;
 - (void) clearAllDirtyMarkers;
 - (void)flagFilesDirtyWithWarnings:(CCBWarnings *)warnings;
-
 
 // *** Handling moved and deleted resources ***
 - (void) removedResourceAt:(NSString*) relPath;
@@ -212,7 +164,16 @@ typedef enum
 // Returns SBDuplicateResourcePathError if resource path toPath already exists
 - (BOOL)moveResourcePathFrom:(NSString *)fromPath toPath:(NSString *)toPath error:(NSError **)error;
 
+- (NSString *)fullPathForResourcePathDict:(NSMutableDictionary *)resourcePathDict;
+
 // *** Misc ***
 - (NSString* ) getVersion;
+- (NSDictionary *)getVersionDictionary;
+
+// Tries to find the relative path among all packages for a given absolute path
+// Example: "/foo/Packages/baa.sbpack" as available packages and absolutePath given is
+// "/foo/Packages/baa.sbpack/level1/sprites/fighter.png" will result in "level1/sprites/fighter.png"
+// If no package include the given absolutePath nil is returned
+- (NSString *)findRelativePathInPackagesForAbsolutePath:(NSString *)absolutePath;
 
 @end

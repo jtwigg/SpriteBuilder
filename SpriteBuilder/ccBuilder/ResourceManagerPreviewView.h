@@ -67,6 +67,10 @@
 }
 @property (weak, nonatomic,readonly) AppDelegate* appDelegate;
 
+@property (weak, nonatomic) IBOutlet NSView *androidContainerImage;
+@property (weak, nonatomic) IBOutlet NSView *androidContainerSpriteSheet;
+@property (weak, nonatomic) IBOutlet NSView *androidContainerSound;
+
 @property (weak, nonatomic,readonly) IBOutlet CCBImageView* previewMain;
 @property (weak, nonatomic,readonly) IBOutlet CCBImageView* previewPhone;
 @property (weak, nonatomic,readonly) IBOutlet CCBImageView* previewPhonehd;
@@ -102,6 +106,8 @@
 @property (nonatomic,readwrite) int format_android_sound;
 @property (nonatomic,readwrite) int format_android_sound_quality;
 @property (nonatomic,readwrite) int format_android_sound_quality_enabled;
+
+@property (nonatomic,readwrite) BOOL trimSprites;
 
 @property (nonatomic, assign) int tabletScale;
 

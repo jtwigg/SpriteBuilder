@@ -31,6 +31,8 @@
 #import <HockeySDK/HockeySDK.h>
 #import "ProjectSettings.h"
 #import "CCNode+NodeInfo.h"
+#import "PublishingFinishedDelegate.h"
+#import "TaskStatusWindow.h"
 
 #define kCCBNumCanvasDevices 14
 
@@ -98,7 +100,7 @@ enum {
 @class CCBTransparentWindow;
 @class CCBTransparentView;
 @class TaskStatusWindow;
-@class CCBPublisher;
+@class CCBDirectoryPublisher;
 @class CCBWarnings;
 @class SequencerHandler;
 @class SequencerScrubberSelectionView;
@@ -120,6 +122,9 @@ enum {
 @class AnimationPlaybackManager;
 @class RegistrationWindow;
 @class ResourceManagerOutlineView;
+@class CCBPublisher;
+
+typedef void (^CompletionCallback) (BOOL success);
 
 @protocol AppDelegate_UndeclaredSelectors <NSObject>
 @optional
@@ -127,7 +132,7 @@ enum {
 - (void) oldVisit:(__unsafe_unretained CCRenderer *)renderer parentTransform:(const GLKMatrix4 *)parentTransform;
 @end
 
-@interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, SMTabBarDelegate, BITCrashReportManagerDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, SMTabBarDelegate, BITCrashReportManagerDelegate, PublishingFinishedDelegate>
 {
     
     // Panel Views
@@ -342,6 +347,7 @@ enum {
 @property (nonatomic,readonly) CCBTransparentView* guiView;
 @property (nonatomic,readonly) CCBTransparentWindow* guiWindow;
 
+@property (weak) IBOutlet NSMenuItem *menuCheckForUpdates;
 @property (weak, nonatomic,readonly) IBOutlet NSMenu* menuContextKeyframe;
 @property (weak, nonatomic,readonly) IBOutlet NSMenu* menuContextKeyframeInterpol;
 @property (weak, nonatomic,readonly) IBOutlet NSMenu *menuContextKeyframeNoselection;
@@ -378,7 +384,7 @@ enum {
 - (void) updateInspectorFromSelection;
 - (void) switchToDocument:(CCBDocument*) document;
 - (void) closeLastDocument;
-- (void) openFile:(NSString*) fileName;
+- (void) openFile:(NSString*)filePath;
 
 - (void)newFile:(NSString *)fileName type:(int)type resolutions:(NSMutableArray *)resolutions;
 
@@ -446,15 +452,12 @@ enum {
 
 - (IBAction) debug:(id)sender;
 
-// Publishing & running
-- (void) publisher:(CCBPublisher*)publisher finishedWithWarnings:(CCBWarnings*)warnings;
-
 // For warning messages. Returns result.
 - (void) modalDialogTitle: (NSString*)title message:(NSString*)msg;
 - (void) modalDialogTitle: (NSString*)title message:(NSString*)msg disableKey:(NSString*)key; //Allow show once behavior.
 
 // Modal status messages (progress)
-- (void) modalStatusWindowStartWithTitle:(NSString*)title;
+- (void) modalStatusWindowStartWithTitle:(NSString *)title isIndeterminate:(BOOL)isIndeterminate onCancelBlock:(OnCancelBlock)onCancelBlock;
 - (void) modalStatusWindowFinish;
 - (void) modalStatusWindowUpdateStatusText:(NSString*) text;
 
